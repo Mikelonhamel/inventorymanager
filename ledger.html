@@ -1,0 +1,831 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Inventory & Crafting Manager</title>
+<style>
+  :root{
+    --bg:#0e131c; --panel:#18212f; --panel2:#202c3d; --line:#2e3e54;
+    --text:#eaf1ff; --muted:#96a9c4; --accent:#6ea8fe; --green:#3ad29f;
+    --red:#ff6b7d; --yellow:#f7c860; --radius:12px; --shadow:0 10px 30px #0006;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,Segoe UI,Arial,sans-serif}
+  button,input,select,textarea{font:inherit}
+  button{cursor:pointer;border:0;border-radius:9px;padding:9px 12px;background:var(--panel2);color:var(--text);transition:.15s}
+  button:hover{filter:brightness(1.18)}
+  .primary{background:var(--accent);color:#08182c;font-weight:700}
+  .ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
+  .ghost:hover{color:#fff;border-color:var(--accent)}
+  .danger{background:#4a2330;color:#ffb4bf}
+  h1,h2,h3,p{margin-top:0}
+  h1{font-size:24px;margin-bottom:3px} h2{font-size:17px;margin-bottom:13px}
+  .muted{color:var(--muted)} .good{color:var(--green)} .bad{color:var(--red)} .warn{color:var(--yellow)}
+  .layout{display:grid;grid-template-columns:255px 1fr;min-height:100vh}
+  aside{background:#111926;border-right:1px solid var(--line);padding:16px;position:sticky;top:0;height:100vh;overflow:auto}
+  .brand b{font-size:17px}
+  .between{display:flex;gap:8px;align-items:center;justify-content:space-between}
+  .row{display:flex;gap:8px;align-items:center}
+  .cat{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:9px;margin-bottom:3px;color:var(--muted);cursor:pointer}
+  .cat:hover{background:#1d2939;color:#fff}
+  .cat.active{background:var(--accent);color:#08182c;font-weight:700}
+  .cat .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .badge{background:#31445f;color:#dce9ff;border-radius:999px;padding:1px 8px;font-size:11px}
+  .cat.active .badge{background:#08182c33;color:#08182c}
+  .tiny{padding:2px 6px;font-size:12px;background:transparent;color:inherit;opacity:.7}
+  .tiny:hover{opacity:1;background:#ffffff1f}
+  main{padding:22px;width:100%;max-width:1750px;margin:auto}
+  .topbar{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+  .top-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:11px;margin-bottom:18px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+  .stat .lb{color:var(--muted);font-size:12px} .stat .vl{font-size:21px;font-weight:750;margin-top:3px}
+  .section{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+  input,select,textarea{width:100%;background:#0f1825;border:1px solid #34465f;color:var(--text);border-radius:9px;padding:9px}
+  input:focus,select:focus,textarea:focus{outline:2px solid #5f98ed77;border-color:var(--accent)}
+  textarea{min-height:78px;resize:vertical}
+  .toolbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .searchbox{position:relative;flex:1;min-width:220px;max-width:380px}
+  .searchbox input{padding-left:32px}
+  .searchbox .ic{position:absolute;left:10px;top:9px;color:var(--muted)}
+  .searchbox .clr{position:absolute;right:5px;top:5px}
+  .table-wrap{overflow:auto;margin-top:13px}
+  table{width:100%;border-collapse:collapse;min-width:1050px}
+  th,td{padding:10px 9px;border-bottom:1px solid #27354a;text-align:left;vertical-align:middle}
+  th{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);white-space:nowrap;position:sticky;top:0;background:var(--panel);z-index:2}
+  th.s{cursor:pointer;user-select:none} th.s:hover{color:#fff}
+  th.n,td.n{text-align:right;white-space:nowrap}
+  tr:hover td{background:#ffffff07}
+  .buy{color:#ffb3ba} .sell{color:#a8f0cf}
+  .catpill{display:inline-block;background:#2a3850;color:#cfe0f7;border-radius:999px;padding:2px 9px;font-size:12px}
+  .qty{display:inline-flex;align-items:center;gap:4px}
+  .qty button{padding:1px 7px;background:#2b3b52;line-height:1.3}
+  .qty b{min-width:34px;text-align:right;display:inline-block}
+  .stock-input{width:72px;padding:6px 7px;text-align:right}
+  .stockval-card{border:1px solid var(--yellow);background:linear-gradient(180deg,#20241a,var(--panel))}
+  .stockval-card .vl{font-size:28px;font-weight:800;color:var(--yellow)}
+  .acts{display:flex;gap:3px;justify-content:flex-end}
+  .empty{text-align:center;color:var(--muted);padding:38px 12px}
+  .cards-view{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:11px;margin-top:13px}
+  .icard{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:13px}
+  .icard h3{font-size:15px;margin-bottom:2px}
+  .bs{display:flex;gap:8px;margin:10px 0;text-align:center}
+  .bs div{flex:1;background:#16202e;border-radius:9px;padding:7px}
+  .bs span{display:block;font-size:11px;color:var(--muted)} .bs b{font-size:15px}
+  .kv{display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;font-size:12.5px;color:var(--muted)}
+  .kv b{color:var(--text);float:right}
+  body[data-view="table"] .cards-view{display:none}
+  body[data-view="cards"] .table-wrap{display:none}
+  @media(max-width:900px){ .table-wrap{display:none!important} .cards-view{display:grid!important} }
+  dialog{width:min(760px,calc(100% - 20px));border:1px solid var(--line);border-radius:15px;background:var(--panel);color:var(--text);box-shadow:var(--shadow)}
+  dialog::backdrop{background:#000a;backdrop-filter:blur(2px)}
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  label{display:block;color:var(--muted);font-size:12px}
+  label>input,label>select,label>textarea{margin-top:5px;color:var(--text)}
+  .full{grid-column:1/-1}
+  .dlg-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+  .preview{background:#131c29;border:1px dashed #3a4c66;border-radius:10px;padding:12px;font-size:13px}
+  .preview b{color:#fff}
+  .sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px}
+  .sum .b{background:var(--panel2);padding:12px;border-radius:10px;cursor:pointer}
+  .sum .b:hover{outline:1px solid var(--accent)}
+  /* crafting */
+  .rcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
+  .rcard{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .rcard h3{margin:0 0 4px;font-size:16px}
+  .comp-list{margin:10px 0;background:#111c2a;border-radius:9px;padding:8px}
+  .comp-list .cl{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px dashed #2a3a51}
+  .comp-list .cl:last-child{border:0}
+  .cost-box{background:#16202e;border-radius:9px;padding:9px;margin-top:9px;font-size:13px;line-height:1.6}
+  .comp-row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+  .comp-row select{flex:1} .comp-row input{width:90px}
+  .rcat-bar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+  .rcat-pill{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);color:var(--muted);cursor:pointer;font-size:12.5px}
+  .rcat-pill:hover{color:#fff;border-color:var(--accent)}
+  .rcat-pill.active{background:var(--accent);color:#08182c;font-weight:700;border-color:var(--accent)}
+  .rcat-pill .badge{background:#31445f;color:#dce9ff}
+  .rcat-pill.active .badge{background:#08182c33;color:#08182c}
+  #toasts{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:99}
+  .toast{background:#22304a;border-left:4px solid var(--accent);padding:11px 14px;border-radius:9px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:center;animation:in .2s}
+  .toast.ok{border-color:var(--green)} .toast.err{border-color:var(--red)}
+  @keyframes in{from{transform:translateY(12px);opacity:0}}
+  kbd{background:#2b3b52;border-radius:5px;padding:1px 6px;font-size:11px}
+  .hidden{display:none}
+  @media(max-width:800px){
+    .layout{grid-template-columns:1fr}
+    aside{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+    #catList{display:flex;gap:6px;overflow:auto;padding-bottom:4px}
+    .cat{white-space:nowrap;margin:0}
+    main{padding:14px}
+    .grid2,.grid3{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body data-view="table">
+<div class="layout">
+  <aside>
+    <div style="margin-bottom:18px">
+      <b>📦 Inventory Management</b><br><span class="muted"></span>
+    </div>
+    <div class="between"><b>📁 Categories</b><button class="tiny" onclick="addCategory()">＋ New</button></div>
+    <div id="catList" style="margin-top:10px"></div>
+    <div style="margin-top:18px" class="muted" id="saveState">Autosave on</div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <div>
+        <h1 id="pageTitle">All Items</h1>
+        <div class="muted" id="pageSub"></div>
+      </div>
+      <div class="top-actions">
+        <select id="currency" style="width:auto" onchange="setCurrency()">
+          <option value="USD">$ USD</option><option value="EUR">€ EUR</option><option value="GBP">£ GBP</option>
+          <option value="CAD">$ CAD</option><option value="AUD">$ AUD</option><option value="JPY">¥ JPY</option>
+        </select>
+        <button class="ghost" onclick="openCalc()">🧮 Calc</button>
+        <button class="ghost" onclick="saveData(true)">💾 Save</button>
+        <button class="ghost" onclick="exportData()">⬇ Export</button>
+        <button class="ghost" onclick="importFile.click()">⬆ Import</button>
+        <input id="importFile" type="file" accept=".json" class="hidden" onchange="importData(event)">
+        <button class="primary" onclick="openItem()">＋ Add Item</button>
+      </div>
+    </div>
+
+    <section class="cards" id="stats"></section>
+
+    <section class="section stockval-card">
+      <div class="between">
+        <div>
+          <h2 style="margin:0">💎 Stockpile Value</h2>
+          <span class="muted"></span>
+        </div>
+        <div class="vl" id="stockValueTotal">$0.00</div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="toolbar">
+        <div class="searchbox">
+          <span class="ic">🔍</span>
+          <input id="search" placeholder="Search items, notes, categories…" oninput="renderItems()">
+          <button class="tiny clr" onclick="search.value='';renderItems()">✕</button>
+        </div>
+        <select id="sortBy" style="width:auto" onchange="renderItems()">
+          <option value="name">Sort: Name</option>
+          <option value="amount">Sort: Amount</option>
+          <option value="minPrice">Sort: Buy (Min)</option>
+          <option value="maxPrice">Sort: Sell (Max)</option>
+          <option value="avgPrice">Sort: Average</option>
+          <option value="totalValue">Sort: Total Value</option>
+          <option value="profit">Sort: Profit</option>
+          <option value="stockpile">Sort: Stockpile</option>
+          <option value="stockValue">Sort: Stockpile Value</option>
+        </select>
+        <button class="ghost" id="dirBtn" onclick="toggleDir()">↑ Asc</button>
+        <button class="ghost" onclick="toggleView()" id="viewBtn">🃏 Card view</button>
+        <span class="muted" id="count" style="margin-left:auto"></span>
+      </div>
+
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th class="s" data-k="name">Item</th>
+          <th>Category</th>
+          <th class="s n" data-k="amount">Amount</th>
+          <th class="s n" data-k="minPrice">💵 Buy = Min</th>
+          <th class="s n" data-k="maxPrice">💰 Sell = Max</th>
+          <th class="s n" data-k="avgPrice">Avg</th>
+          <th class="s n" data-k="profit">Profit / Item</th>
+          <th class="n">Margin</th>
+          <th class="s n" data-k="totalValue">Total Value</th>
+          <th class="s n" data-k="profit">Est. Profit</th>
+          <th class="s n" data-k="stockpile">📦 Stockpile</th>
+          <th class="s n" data-k="stockValue">💎 Stockpile Value</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table></div>
+      <div class="cards-view" id="cardsView"></div>
+    </section>
+
+    <section class="section">
+      <h2>📊 Category Totals</h2>
+      <div class="sum" id="catSum"></div>
+    </section>
+
+    <section class="section" style="border:1px solid #3a5a82">
+      <div class="between" style="margin-bottom:12px">
+        <div><h2 style="margin:0">🛠️ Build Cost Calculator</h2>
+        <span class="muted"></span></div>
+        <button class="primary" onclick="openRecipe()">＋ Add Recipe</button>
+      </div>
+      <div class="rcat-bar" id="recipeCatBar"></div>
+      <div class="rcards" id="recipeList"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ITEM DIALOG -->
+<dialog id="itemDlg"><form method="dialog" onsubmit="saveItem(event)">
+  <div class="between"><h2 id="dlgTitle">Add Item</h2><button type="button" class="tiny" onclick="itemDlg.close()">✕</button></div>
+  <input id="fId" type="hidden">
+  <div class="grid2">
+    <label class="full">Item Name *<input id="fName" required placeholder="e.g. Iron Ingot, Leather, Armour"></label>
+    <label>Category<select id="fCat"></select></label>
+    <label>Amount / Quantity *<input id="fAmt" type="number" min="0" step="1" value="1" required oninput="preview()"></label>
+    <label>💵 Minimum Price = Buy Cost<input id="fMin" type="number" min="0" step="0.01" value="0" oninput="preview()"></label>
+    <label>💰 Maximum Price = Sell Price<input id="fMax" type="number" min="0" step="0.01" value="0" oninput="preview()"></label>
+    <label>💎 Stockpile Qty <span class="muted">(separate from Amount)</span><input id="fStock" type="number" min="0" step="1" value="0" oninput="preview()"></label>
+    <label class="full">Notes<textarea id="fNotes" placeholder="Condition, supplier, storage..."></textarea></label>
+    <div class="full preview" id="prev"></div>
+  </div>
+  <div class="dlg-actions">
+    <button type="button" class="ghost" onclick="itemDlg.close()">Cancel</button>
+    <button class="primary" type="submit">Save Item</button>
+  </div>
+</form></dialog>
+
+<!-- RECIPE DIALOG -->
+<dialog id="recipeDlg"><form method="dialog" onsubmit="saveRecipe(event)">
+  <div class="between"><h2 id="rTitle">Add Recipe</h2><button type="button" class="tiny" onclick="recipeDlg.close()">✕</button></div>
+  <input id="rId" type="hidden">
+  <div class="grid2">
+    <label class="full">Recipe Name * <span class="muted">e.g. Armour</span>
+      <input id="rName" required placeholder="Armour" oninput="updateRPreview()">
+    </label>
+    <label>Recipe Category
+      <select id="rCat"></select>
+      <span class="muted" style="font-size:11px">Groups recipes in the crafting list</span>
+    </label>
+    <label>Output Item (link to inventory)
+      <select id="rOutItem" onchange="onOutputChange()"></select>
+      <span class="muted" style="font-size:11px">Leave as Custom to create new item</span>
+    </label>
+    <label>Output Amount (how many you get)
+      <input id="rOutQty" type="number" min="1" step="1" value="1" oninput="updateRPreview()">
+    </label>
+    <div class="full" id="customOutBox">
+      <div class="grid2">
+        <label>Custom Output Name (if not linked)<input id="rOutName" placeholder="e.g. Armour"></label>
+        <label>Custom Notes<textarea id="rNotes" style="min-height:40px"></textarea></label>
+        <label>Custom Min Price (Buy)
+          <input id="rCustomMin" type="number" step="0.01" value="0" oninput="updateRPreview()">
+        </label>
+        <label>Custom Max Price (Sell)
+          <input id="rCustomMax" type="number" step="0.01" value="0" oninput="updateRPreview()">
+        </label>
+      </div>
+    </div>
+
+    <div class="full">
+      <div class="between"><b>Components / Parts</b><button type="button" class="ghost" onclick="addComp()">＋ Add Part</button></div>
+      <div id="compContainer" style="margin-top:8px"></div>
+      <div class="preview" id="rPreview" style="margin-top:10px"></div>
+    </div>
+  </div>
+  <div class="dlg-actions">
+    <button type="button" class="ghost" onclick="recipeDlg.close()">Cancel</button>
+    <button class="primary" type="submit">Save Recipe</button>
+  </div>
+</form></dialog>
+
+<!-- HISTORY -->
+<dialog id="histDlg">
+  <div class="between"><h2 id="histTitle">Price History</h2><button class="tiny" onclick="histDlg.close()">✕</button></div>
+  <div id="histBody"></div>
+  <div class="dlg-actions"><button class="ghost" onclick="histDlg.close()">Close</button></div>
+</dialog>
+
+<!-- CALC -->
+<dialog id="calcDlg">
+  <div class="between"><h2>🧮 Buy / Sell Profit Calculator</h2><button class="tiny" onclick="calcDlg.close()">✕</button></div>
+  <div class="grid3">
+    <label>Buy Price (Min)<input id="cBuy" type="number" step="0.01" value="0" oninput="runCalc()"></label>
+    <label>Sell Price (Max)<input id="cSell" type="number" step="0.01" value="0" oninput="runCalc()"></label>
+    <label>Quantity<input id="cQty" type="number" step="1" value="1" oninput="runCalc()"></label>
+  </div>
+  <div class="preview" id="calcOut" style="margin-top:13px"></div>
+  <div class="dlg-actions"><button class="ghost" onclick="calcDlg.close()">Close</button></div>
+</dialog>
+
+<div id="toasts"></div>
+
+<script>
+const KEY="inv_profit_mgr_v3";
+const DEFAULT_DATA={"currency":"USD","categories":[{"id":"msxrw26387hel","name":"Minning"},{"id":"msxs91usuczmu","name":"woodworking"},{"id":"msxsc6hbvkqc0","name":"hunters"},{"id":"msxt3tx0ql6me","name":"blacksmith"},{"id":"msxt4ffok8dnd","name":"Tailor"},{"id":"msxt4rva7ot0x","name":"Cook"},{"id":"msxt56qd9z41l","name":"Warrior"},{"id":"msxt5lqhwsd49","name":"Enchanter"},{"id":"msxt5zavyibdg","name":"Alchemy"}],"items":[{"id":"msxrwm0cqd065","name":"Iron ore","categoryId":"msxrw26387hel","amount":0,"minPrice":0.25,"maxPrice":0.25,"notes":"","history":[{"date":"2026-08-17T21:57:35.092Z","previous":{"minPrice":0.2,"maxPrice":0.3},"current":{"minPrice":0.25,"maxPrice":0.25}}],"createdAt":"2026-08-17T21:56:10.477Z","updatedAt":"2026-08-17T21:57:35.092Z"},{"id":"msxs02v1qste1","name":"Gold ore","categoryId":"msxrw26387hel","amount":0,"minPrice":0.25,"maxPrice":0.25,"notes":"","history":[],"createdAt":"2026-08-17T21:58:52.285Z","updatedAt":"2026-08-17T21:58:52.285Z"},{"id":"msxs0kkiqyw71","name":"Corundum ore","categoryId":"msxrw26387hel","amount":0,"minPrice":0.25,"maxPrice":0.25,"notes":"","history":[],"createdAt":"2026-08-17T21:59:15.234Z","updatedAt":"2026-08-17T21:59:15.234Z"},{"id":"msxs10x2rmukx","name":"Silver ore","categoryId":"msxrw26387hel","amount":0,"minPrice":1,"maxPrice":1,"notes":"","history":[{"date":"2026-08-17T21:59:46.912Z","previous":{"minPrice":0.5,"maxPrice":1},"current":{"minPrice":1,"maxPrice":1}}],"createdAt":"2026-08-17T21:59:36.422Z","updatedAt":"2026-08-17T21:59:46.912Z"},{"id":"msxs1x32lncg7","name":"Steel ingot","categoryId":"msxrw26387hel","amount":0,"minPrice":15,"maxPrice":15,"notes":"","history":[],"createdAt":"2026-08-17T22:00:18.111Z","updatedAt":"2026-08-17T22:00:18.111Z"},{"id":"msxs2vqixfksv","name":"Orcish ore","categoryId":"msxrw26387hel","amount":0,"minPrice":35,"maxPrice":35,"notes":"","history":[],"createdAt":"2026-08-17T22:01:03.018Z","updatedAt":"2026-08-17T22:01:03.018Z"},{"id":"msxs3c2088yzm","name":"Moonstone ore","categoryId":"msxrw26387hel","amount":0,"minPrice":60,"maxPrice":60,"notes":"","history":[],"createdAt":"2026-08-17T22:01:24.168Z","updatedAt":"2026-08-17T22:01:24.168Z"},{"id":"msxs3wgkf9hvo","name":"Quicksilver ore","categoryId":"msxrw26387hel","amount":0,"minPrice":60,"maxPrice":60,"notes":"","history":[],"createdAt":"2026-08-17T22:01:50.612Z","updatedAt":"2026-08-17T22:01:50.612Z"},{"id":"msxs4elaumjee","name":"Quicksilver ingot","categoryId":"msxrw26387hel","amount":0,"minPrice":450,"maxPrice":450,"notes":"","history":[],"createdAt":"2026-08-17T22:02:14.110Z","updatedAt":"2026-08-17T22:02:14.110Z"},{"id":"msxs4tbu2gfyn","name":"Moonstone ingot","categoryId":"msxrw26387hel","amount":0,"minPrice":450,"maxPrice":450,"notes":"","history":[],"createdAt":"2026-08-17T22:02:33.210Z","updatedAt":"2026-08-17T22:02:33.210Z"},{"id":"msxs5b5u9qt04","name":"Orcish ingot","categoryId":"msxrw26387hel","amount":0,"minPrice":325,"maxPrice":325,"notes":"","history":[],"createdAt":"2026-08-17T22:02:56.322Z","updatedAt":"2026-08-17T22:02:56.322Z"},{"id":"msxs5ue4tf6py","name":"Silver ingot","categoryId":"msxrw26387hel","amount":0,"minPrice":20,"maxPrice":20,"notes":"","history":[],"createdAt":"2026-08-17T22:03:21.244Z","updatedAt":"2026-08-17T22:03:21.244Z"},{"id":"msxs67mn87sye","name":"Gold ingot","categoryId":"msxrw26387hel","amount":0,"minPrice":20,"maxPrice":20,"notes":"","history":[],"createdAt":"2026-08-17T22:03:38.399Z","updatedAt":"2026-08-17T22:03:38.399Z"},{"id":"msxs8a8etqrya","name":"Corundum ingot","categoryId":"msxrw26387hel","amount":0,"minPrice":8,"maxPrice":8,"notes":"","history":[],"createdAt":"2026-08-17T22:05:15.086Z","updatedAt":"2026-08-17T22:05:15.086Z"},{"id":"msxs8rhaqpquo","name":"Iron ingot","categoryId":"msxrw26387hel","amount":0,"minPrice":8,"maxPrice":8,"notes":"","history":[],"createdAt":"2026-08-17T22:05:37.438Z","updatedAt":"2026-08-17T22:05:37.438Z"},{"id":"msxs9prfjika0","name":"Poor charcoal","categoryId":"msxs91usuczmu","amount":0,"minPrice":1,"maxPrice":1,"notes":"","history":[],"createdAt":"2026-08-17T22:06:21.867Z","updatedAt":"2026-08-17T22:06:21.867Z"},{"id":"msxsa4aflk7um","name":"Charcoal","categoryId":"msxs91usuczmu","amount":0,"minPrice":2,"maxPrice":2,"notes":"","history":[],"createdAt":"2026-08-17T22:06:40.695Z","updatedAt":"2026-08-17T22:06:40.695Z"},{"id":"msxsas5pb2cms","name":"Briqutte charcoal","categoryId":"msxs91usuczmu","amount":0,"minPrice":5,"maxPrice":5,"notes":"","history":[],"createdAt":"2026-08-17T22:07:11.629Z","updatedAt":"2026-08-17T22:07:11.629Z"},{"id":"msxsb9kiol8sc","name":"Coke charcoal","categoryId":"msxs91usuczmu","amount":0,"minPrice":8,"maxPrice":8,"notes":"","history":[],"createdAt":"2026-08-17T22:07:34.194Z","updatedAt":"2026-08-17T22:07:34.194Z"},{"id":"msxscjmjw0ba5","name":"Leather","categoryId":"msxsc6hbvkqc0","amount":0,"minPrice":3.5,"maxPrice":3.5,"notes":"","history":[],"createdAt":"2026-08-17T22:08:33.883Z","updatedAt":"2026-08-17T22:08:33.883Z"},{"id":"msxscxnp43r35","name":"Sabre Eyes","categoryId":"msxsc6hbvkqc0","amount":0,"minPrice":3,"maxPrice":3,"notes":"","history":[],"createdAt":"2026-08-17T22:08:52.069Z","updatedAt":"2026-08-17T22:08:52.069Z"},{"id":"msxsd6jxatx8z","name":"Venison","categoryId":"msxsc6hbvkqc0","amount":0,"minPrice":4,"maxPrice":4,"notes":"","history":[],"createdAt":"2026-08-17T22:09:03.597Z","updatedAt":"2026-08-17T22:09:03.597Z"},{"id":"msxsdkp7bnoxn","name":"Mammoth Snout","categoryId":"msxsc6hbvkqc0","amount":0,"minPrice":6,"maxPrice":6,"notes":"","history":[],"createdAt":"2026-08-17T22:09:21.931Z","updatedAt":"2026-08-17T22:09:21.931Z"},{"id":"msxsx0u4iwz9t","name":"Ebony ingot","categoryId":"msxrw26387hel","amount":0,"minPrice":10000,"maxPrice":10000,"notes":"","history":[],"createdAt":"2026-08-17T22:24:29.308Z","updatedAt":"2026-08-17T22:24:37.354Z"},{"id":"msxty6g4qlwuo","name":"Pickaxe","categoryId":"msxt3tx0ql6me","amount":1,"minPrice":15,"maxPrice":20,"notes":"","history":[],"createdAt":"2026-08-17T22:53:22.852Z","updatedAt":"2026-08-17T22:53:22.852Z"}],"recipes":[{"id":"msxshis52evqk","name":"Iron Ingot","categoryId":"msxrw26387hel","outputItemId":"msxs8rhaqpquo","outputName":"Iron ingot","outputQuantity":1,"customMinPrice":0,"customMaxPrice":0,"components":[{"itemId":"msxs9prfjika0","quantity":6},{"itemId":"msxrwm0cqd065","quantity":6}],"notes":""},{"id":"msxsi4h06n5kv","name":"Corundum ingot","categoryId":"msxrw26387hel","outputItemId":"msxs8a8etqrya","outputName":"Corundum ingot","outputQuantity":1,"customMinPrice":0,"customMaxPrice":0,"components":[{"itemId":"msxs9prfjika0","quantity":8},{"itemId":"msxs0kkiqyw71","quantity":8}],"notes":""},{"id":"msxsj3cv9bjsz","name":"Gold Ingot","categoryId":"msxrw26387hel","outputItemId":"msxs67mn87sye","outputName":"Gold ingot","outputQuantity":1,"customMinPrice":0,"customMaxPrice":0,"components":[{"itemId":"msxsa4aflk7um","quantity":6},{"itemId":"msxs02v1qste1","quantity":6}],"notes":""},{"id":"msxsjzc5jm8dn","name":"Steel Ingot","categoryId":"msxrw26387hel","outputItemId":"msxs1x32lncg7","outputName":"Steel ingot","outputQuantity":1,"customMinPrice":0,"customMaxPrice":0,"components":[{"itemId":"msxs0kkiqyw71","quantity":3},{"itemId":"msxrwm0cqd065","quantity":3},{"itemId":"msxsa4aflk7um","quantity":6}],"notes":""},{"id":"msxskql1st7ge","name":"Sliver ingot","categoryId":"msxrw26387hel","outputItemId":"msxs5ue4tf6py","outputName":"Silver ingot","outputQuantity":1,"customMinPrice":0,"customMaxPrice":0,"components":[{"itemId":"msxs10x2rmukx","quantity":6},{"itemId":"msxsa4aflk7um","quantity":6}],"notes":""},{"id":"msxsthf888h8u","name":"Orchalcum Ingot","categoryId":"msxrw26387hel","outputItemId":"msxs8a8etqrya","outputName":"Corundum ingot","outputQuantity":1,"customMinPrice":0,"customMaxPrice":0,"components":[{"itemId":"msxsas5pb2cms","quantity":6},{"itemId":"msxs0kkiqyw71","quantity":6}],"notes":""},{"id":"msxsurpiv7ieh","name":"Quicksliver ingot","categoryId":"msxrw26387hel","outputItemId":"msxs4elaumjee","outputName":"Quicksilver ingot","outputQuantity":1,"customMinPrice":0,"customMaxPrice":0,"components":[{"itemId":"msxsb9kiol8sc","quantity":6},{"itemId":"msxs3wgkf9hvo","quantity":6}],"notes":""},{"id":"msxsvsyabqrgo","name":"Moonstone ingot","categoryId":"msxrw26387hel","outputItemId":"msxs4tbu2gfyn","outputName":"Moonstone ingot","outputQuantity":1,"customMinPrice":0,"customMaxPrice":0,"components":[{"itemId":"msxsas5pb2cms","quantity":1},{"itemId":"msxs3c2088yzm","quantity":1}],"notes":""},{"id":"msxtynhnxaber","name":"Pickaxe","categoryId":"msxt3tx0ql6me","outputItemId":"msxty6g4qlwuo","outputName":"Pickaxe","outputQuantity":1,"customMinPrice":0,"customMaxPrice":0,"components":[{"itemId":"msxs8rhaqpquo","quantity":1}],"notes":""}]};
+let S={categories:[],items:[],recipes:[],sel:"all",dir:"asc",view:"table",currency:"USD",recipeSel:"all"};
+let tempComps=[];
+const $=id=>document.getElementById(id);
+const n=v=>Math.max(0,Number(v)||0);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const esc=t=>String(t??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money=v=>new Intl.NumberFormat(undefined,{style:"currency",currency:S.currency,maximumFractionDigits:2}).format(Number(v)||0);
+const avg=i=> (n(i.minPrice)+n(i.maxPrice))/2;
+const ppi=i=> n(i.maxPrice)-n(i.minPrice);
+const totMin=i=> n(i.amount)*n(i.minPrice);
+const totMax=i=> n(i.amount)*n(i.maxPrice);
+const totAvg=i=> n(i.amount)*avg(i);
+const estPro=i=> n(i.amount)*ppi(i);
+const stockVal=i=> avg(i)*n(i.stockpile);
+const margin=i=> n(i.maxPrice)>0? (ppi(i)/n(i.maxPrice))*100:0;
+const catName=id=>!id?"Uncategorized":(S.categories.find(c=>c.id===id)?.name||"Uncategorized");
+const getItem=id=>S.items.find(x=>x.id===id);
+
+function toast(msg,type="",action){
+  const el=document.createElement("div"); el.className="toast "+type;
+  el.innerHTML=`<span>${msg}</span>`;
+  if(action){const b=document.createElement("button");b.textContent=action.label;b.onclick=()=>{action.fn();el.remove()};el.appendChild(b);}
+  $("toasts").appendChild(el); setTimeout(()=>el.remove(),action?7000:2600);
+}
+
+/* STORAGE */
+const STORE_KEY="inv_data";
+const hasPersistentStore = typeof window!=="undefined" && window.storage && typeof window.storage.get==="function" && typeof window.storage.set==="function";
+
+async function readStore(){
+  // Try the platform's persistent storage first (survives reloads reliably),
+  // then fall back to localStorage (for when the file is opened directly in a browser).
+  if(hasPersistentStore){
+    try{
+      const res=await window.storage.get(STORE_KEY,false);
+      if(res && res.value) return res.value;
+    }catch(e){ /* key not found yet, or storage unavailable — fall through */ }
+  }
+  try{ return localStorage.getItem(KEY); }catch(e){ return null; }
+}
+async function writeStore(payload){
+  let ok=false;
+  try{ localStorage.setItem(KEY,payload); ok=true; }catch(e){}
+  if(hasPersistentStore){
+    try{ await window.storage.set(STORE_KEY,payload,false); ok=true; }
+    catch(e){ console.error("persistent storage save failed",e); }
+  }
+  return ok;
+}
+
+async function loadData(){
+  try{
+    const raw=await readStore();
+    const d=raw?JSON.parse(raw):null;
+    if(d&&Array.isArray(d.items)){
+      S={...S,...d};
+    } else {
+      // no saved data yet — seed from the bundled default settings
+      S={...S, ...JSON.parse(JSON.stringify(DEFAULT_DATA))};
+    }
+    // migration from v2 where buyPrice/sellPrice existed
+    S.items.forEach(i=>{
+      if(i.buyPrice!=null && !i.minPrice) i.minPrice=n(i.buyPrice);
+      if(i.sellPrice!=null && !i.maxPrice) i.maxPrice=n(i.sellPrice);
+      i.minPrice=n(i.minPrice); i.maxPrice=n(i.maxPrice);
+      i.stockpile=n(i.stockpile);
+      delete i.buyPrice; delete i.sellPrice; delete i.lowStock; delete i.pricePerUnit;
+    });
+    if(!Array.isArray(S.recipes)) S.recipes=[];
+    S.recipes.forEach(r=>{ if(r.categoryId==null) r.categoryId=""; });
+    if(!S.recipeSel) S.recipeSel="all";
+  }catch(e){ console.error("load failed",e); }
+  $("currency").value=S.currency; document.body.dataset.view=S.view;
+  $("viewBtn").textContent=S.view==="table"?"🃏 Card view":"📋 Table view";
+  renderAll();
+}
+async function saveData(manual){
+  const ok=await writeStore(JSON.stringify(S));
+  $("saveState").textContent=(ok?"Saved ":"⚠ Save failed ")+new Date().toLocaleTimeString();
+  if(manual) toast(ok?"✅ Saved":"❌ Save failed — check console",ok?"ok":"err");
+}
+function backupPayload(){
+  return JSON.stringify({app:"Inventory & Crafting Manager",version:3,exportedAt:new Date().toISOString(),currency:S.currency,categories:S.categories,items:S.items,recipes:S.recipes},null,2);
+}
+function setCurrency(){S.currency=$("currency").value;saveData();renderAll();}
+function toggleView(){S.view=S.view==="table"?"cards":"table";document.body.dataset.view=S.view;
+  $("viewBtn").textContent=S.view==="table"?"🃏 Card view":"📋 Table view";saveData();}
+function toggleDir(){S.dir=S.dir==="asc"?"desc":"asc";$("dirBtn").textContent=S.dir==="asc"?"↑ Asc":"↓ Desc";saveData();renderItems();}
+
+/* CATEGORIES */
+function renderCats(){
+  const un=S.items.filter(i=>!i.categoryId).length;
+  let h=`<div class="cat ${S.sel==="all"?"active":""}" onclick="selCat('all')"><span>🗂</span><span class="nm">All Items</span><span class="badge">${S.items.length}</span></div>`;
+  if(un) h+=`<div class="cat ${S.sel===""?"active":""}" onclick="selCat('')"><span>📦</span><span class="nm">Uncategorized</span><span class="badge">${un}</span></div>`;
+  S.categories.forEach(c=>{
+    const cnt=S.items.filter(i=>i.categoryId===c.id).length;
+    h+=`<div class="cat ${S.sel===c.id?"active":""}" onclick="selCat('${c.id}')"><span>📂</span><span class="nm">${esc(c.name)}</span><span class="badge">${cnt}</span><button class="tiny" onclick="event.stopPropagation();renameCat('${c.id}')">✎</button><button class="tiny" onclick="event.stopPropagation();delCat('${c.id}')">🗑</button></div>`;
+  });
+  $("catList").innerHTML=h;
+}
+function selCat(id){S.sel=id; $("pageTitle").textContent=id==="all"?"All Items":id===""?"Uncategorized":catName(id);
+  const items=id==="all"?S.items:S.items.filter(i=>i.categoryId===id);
+  $("pageSub").textContent=`${items.length} item(s) · ${items.reduce((s,i)=>s+n(i.amount),0)} units · ${money(items.reduce((s,i)=>s+totAvg(i),0))} value`;
+  saveData();renderCats();renderItems();}
+function addCategory(){const nm=prompt("New category name:");if(!nm?.trim())return;
+  if(S.categories.some(c=>c.name.toLowerCase()===nm.trim().toLowerCase()))return toast("Exists","err");
+  S.categories.push({id:uid(),name:nm.trim()});saveData();renderAll();toast("📁 Category created","ok");}
+function renameCat(id){const c=S.categories.find(x=>x.id===id);const nm=prompt("Rename:",c.name);if(!nm?.trim())return;c.name=nm.trim();saveData();renderAll();}
+function delCat(id){const c=S.categories.find(x=>x.id===id);const cnt=S.items.filter(i=>i.categoryId===id).length;
+  if(!confirm(`Delete "${c.name}"? ${cnt} items→Uncategorized`))return;
+  S.items.forEach(i=>{if(i.categoryId===id)i.categoryId="";});
+  S.recipes.forEach(r=>{if(r.categoryId===id)r.categoryId="";});
+  S.categories=S.categories.filter(x=>x.id!==id);
+  if(S.sel===id)S.sel="all"; if(S.recipeSel===id)S.recipeSel="all"; saveData();renderAll();}
+
+/* DASHBOARD */
+function renderStats(){
+  const it=S.items; const qty=it.reduce((s,i)=>s+n(i.amount),0);
+  const mn=it.reduce((s,i)=>s+totMin(i),0), mx=it.reduce((s,i)=>s+totMax(i),0);
+  const av=it.reduce((s,i)=>s+totAvg(i),0), pf=it.reduce((s,i)=>s+estPro(i),0);
+  const c=(l,v,cl="")=>`<div class="stat"><div class="lb">${l}</div><div class="vl ${cl}">${v}</div></div>`;
+  $("stats").innerHTML=c("📦 Total Items",it.length)+c("🔢 Quantity",qty)+c("💵 Total Buy (Min)",money(mn),"buy")+c("💰 Total Sell (Max)",money(mx),"sell")+c("⚖️ Avg Value",money(av))+c("🤑 Est. Profit",money(pf),pf>=0?"good":"bad")+c("📊 Margin", (mx?pf/mx*100:0).toFixed(1)+"%");
+  renderStockValue();
+}
+function renderStockValue(){
+  const total=S.items.reduce((s,i)=>s+stockVal(i),0);
+  const el=$("stockValueTotal"); if(el) el.textContent=money(total);
+}
+
+/* ITEMS */
+function filtered(){
+  const q=$("search").value.trim().toLowerCase();
+  const k=$("sortBy").value, d=S.dir==="asc"?1:-1;
+  const val={name:i=>i.name.toLowerCase(),amount:i=>n(i.amount),minPrice:i=>n(i.minPrice),maxPrice:i=>n(i.maxPrice),avgPrice:i=>avg(i),totalValue:i=>totAvg(i),profit:i=>estPro(i),stockpile:i=>n(i.stockpile),stockValue:i=>stockVal(i)};
+  return S.items.filter(i=>{
+    const inCat=S.sel==="all"||i.categoryId===S.sel;
+    const txt=`${i.name} ${i.notes} ${catName(i.categoryId)}`.toLowerCase();
+    return inCat && (!q||txt.includes(q));
+  }).sort((a,b)=>{const x=val[k](a),y=val[k](b);return typeof x==="string"?x.localeCompare(y)*d:(x-y)*d;});
+}
+function renderItems(){
+  const list=filtered();
+  $("count").textContent=`${list.length} shown · ${money(list.reduce((s,i)=>s+totAvg(i),0))} value`;
+  document.querySelectorAll("th.s").forEach(th=>th.textContent=th.textContent.replace(/ [↑↓]$/,"")+(th.dataset.k===$("sortBy").value?(S.dir==="asc"?" ↑":" ↓"):""));
+  if(!list.length){
+    const msg=S.items.length?"No match":"No items yet — add some materials and recipes.";
+    $("tbody").innerHTML=`<tr><td colspan="13" class="empty">${msg}</td></tr>`;
+    $("cardsView").innerHTML=`<div class="empty">${msg}</div>`; return;
+  }
+  $("tbody").innerHTML=list.map(i=>{
+    const p=ppi(i),ep=estPro(i),m=margin(i);
+    return `<tr>
+      <td><b>${esc(i.name)}</b>${i.notes?`<br><span class="muted">${esc(i.notes).slice(0,60)}</span>`:""}</td>
+      <td><span class="catpill">${esc(catName(i.categoryId))}</span></td>
+      <td class="n"><span class="qty"><button onclick="bump('${i.id}',-1)">−</button><b>${n(i.amount)}</b><button onclick="bump('${i.id}',1)">＋</button></span></td>
+      <td class="n buy">${money(i.minPrice)}</td>
+      <td class="n sell">${money(i.maxPrice)}</td>
+      <td class="n">${money(avg(i))}</td>
+      <td class="n ${p>=0?"good":"bad"}">${money(p)}</td>
+      <td class="n ${m>=0?"good":"bad"}">${m.toFixed(1)}%</td>
+      <td class="n"><b>${money(totAvg(i))}</b><br><span class="muted">${money(totMin(i))}–${money(totMax(i))}</span></td>
+      <td class="n ${ep>=0?"good":"bad"}"><b>${money(ep)}</b></td>
+      <td class="n"><input class="stock-input" type="number" min="0" step="1" value="${n(i.stockpile)}" onchange="setStockpile('${i.id}',this.value)"></td>
+      <td class="n" id="stockVal_${i.id}"><b>${money(stockVal(i))}</b></td>
+      <td><div class="acts"><button class="tiny" onclick="showHist('${i.id}')">🕘</button><button class="tiny" onclick="dupe('${i.id}')">⧉</button><button class="tiny" onclick="openItem('${i.id}')">✎</button><button class="tiny" onclick="delItem('${i.id}')">🗑</button></div></td>
+    </tr>`;
+  }).join("");
+  $("cardsView").innerHTML=list.map(i=>{
+    const p=ppi(i),ep=estPro(i),m=margin(i);
+    return `<div class="icard"><div class="between"><h3>${esc(i.name)}</h3><span class="catpill">${esc(catName(i.categoryId))}</span></div>
+      <div class="qty" style="margin-top:6px">Qty: <button onclick="bump('${i.id}',-1)">−</button><b>${n(i.amount)}</b><button onclick="bump('${i.id}',1)">＋</button></div>
+      <div class="bs"><div><span>💵 Buy/Min</span><b class="buy">${money(i.minPrice)}</b></div><div><span>💰 Sell/Max</span><b class="sell">${money(i.maxPrice)}</b></div><div><span>Profit</span><b class="${p>=0?"good":"bad"}">${money(p)}</b></div></div>
+      <div class="kv"><div>Avg <b>${money(avg(i))}</b></div><div>Margin <b class="${m>=0?"good":"bad"}">${m.toFixed(1)}%</b></div><div>Total <b>${money(totAvg(i))}</b></div><div>Est Profit <b class="${ep>=0?"good":"bad"}">${money(ep)}</b></div></div>
+      <div class="between" style="margin-top:9px;padding-top:9px;border-top:1px dashed #2a3a51">
+        <span class="muted">💎 Stockpile</span>
+        <input class="stock-input" type="number" min="0" step="1" value="${n(i.stockpile)}" onchange="setStockpile('${i.id}',this.value)">
+      </div>
+      <div class="muted" style="text-align:right;margin-top:4px">Stockpile Value: <b id="stockValCard_${i.id}">${money(stockVal(i))}</b></div>
+      <div class="acts" style="margin-top:10px"><button class="tiny" onclick="showHist('${i.id}')">🕘</button><button class="tiny" onclick="dupe('${i.id}')">⧉</button><button class="tiny" onclick="openItem('${i.id}')">✎ Edit</button><button class="tiny" onclick="delItem('${i.id}')">🗑</button></div></div>`;
+  }).join("");
+}
+function renderCatSum(){
+  const groups=[...S.categories]; if(S.items.some(i=>!i.categoryId)) groups.push({id:"",name:"Uncategorized"});
+  if(!groups.length){$("catSum").innerHTML='<span class="muted">Create categories</span>';return;}
+  $("catSum").innerHTML=groups.map(c=>{
+    const it=S.items.filter(i=>i.categoryId===c.id);
+    return `<div class="b" onclick="selCat('${c.id}')"><b>${esc(c.name)}</b><span class="muted">${it.length} items · ${it.reduce((s,i)=>s+n(i.amount),0)} units</span><br>Avg ${money(it.reduce((s,i)=>s+totAvg(i),0))}<br><span class="${it.reduce((s,i)=>s+estPro(i),0)>=0?"good":"bad"}">Profit ${money(it.reduce((s,i)=>s+estPro(i),0))}</span></div>`;
+  }).join("");
+}
+
+/* ITEM CRUD */
+function bump(id,d){const i=getItem(id); i.amount=Math.max(0,n(i.amount)+d); saveData(); renderStats(); renderItems(); renderCats(); renderCatSum(); renderRecipes();}
+function setStockpile(id,val){
+  const i=getItem(id); if(!i) return;
+  i.stockpile=n(val);
+  saveData();
+  renderStats(); // updates the standalone Stockpile Value card total
+  const v=money(stockVal(i));
+  const tEl=$("stockVal_"+id), cEl=$("stockValCard_"+id);
+  if(tEl) tEl.innerHTML=`<b>${v}</b>`;
+  if(cEl) cEl.textContent=v;
+}
+function openItem(id){
+  $("dlgTitle").textContent=id?"Edit Item":"Add Item"; $("fId").value=id||"";
+  const i=id?getItem(id):null;
+  $("fName").value=i?.name||""; $("fAmt").value=i?.amount??1; $("fMin").value=i?.minPrice??0; $("fMax").value=i?.maxPrice??0; $("fStock").value=i?.stockpile??0; $("fNotes").value=i?.notes||"";
+  $("fCat").innerHTML=`<option value="">Uncategorized</option>`+S.categories.map(c=>`<option value="${c.id}" ${c.id===(i?i.categoryId:S.sel==="all"?"":S.sel)?"selected":""}>${esc(c.name)}</option>`).join("");
+  preview(); $("itemDlg").showModal();
+}
+function preview(){
+  const a=n($("fAmt").value), mn=n($("fMin").value), mx=n($("fMax").value), stk=n($("fStock").value);
+  const av=(mn+mx)/2, p=mx-mn, mg=mx>0?p/mx*100:0;
+  $("prev").innerHTML=`Avg <b>${money(av)}</b> · Total Min <b>${money(a*mn)}</b> · Total Max <b>${money(a*mx)}</b> · Total Avg <b>${money(a*av)}</b><br>Profit/Item (Sell-Buy) <b class="${p>=0?"good":"bad"}">${money(p)}</b> · Total Profit <b class="${p>=0?"good":"bad"}">${money(p*a)}</b> · Margin <b>${mg.toFixed(2)}%</b>${mx&&mn>mx?'<br><span class="bad">⚠ Min > Max!</span>':""}<br>💎 Stockpile Value (Avg × Stockpile, separate from Amount) <b>${money(av*stk)}</b>`;
+}
+function saveItem(e){
+  e.preventDefault();
+  const id=$("fId").value, old=getItem(id);
+  const it={id:id||uid(), name:$("fName").value.trim(), categoryId:$("fCat").value,
+    amount:n($("fAmt").value), minPrice:n($("fMin").value), maxPrice:n($("fMax").value), stockpile:n($("fStock").value),
+    notes:$("fNotes").value.trim(), history:old?.history||[], createdAt:old?.createdAt||new Date().toISOString(), updatedAt:new Date().toISOString()};
+  if(!it.name)return;
+  if(old){
+    if(n(old.minPrice)!==n(it.minPrice)||n(old.maxPrice)!==n(it.maxPrice)){
+      it.history.unshift({date:new Date().toISOString(), previous:{minPrice:n(old.minPrice),maxPrice:n(old.maxPrice)}, current:{minPrice:it.minPrice,maxPrice:it.maxPrice}});
+    }
+    S.items=S.items.map(x=>x.id===id?it:x);
+  } else S.items.push(it);
+  saveData(); $("itemDlg").close(); renderAll(); toast(old?"✏️ Updated":"✅ Added","ok");
+}
+function dupe(id){const i=getItem(id); S.items.push({...i,id:uid(),name:i.name+" (copy)",history:[],createdAt:new Date().toISOString()}); saveData(); renderAll(); toast("⧉ Duplicated","ok");}
+function delItem(id){const i=getItem(id); if(!confirm(`Delete "${i.name}"?`))return; S.items=S.items.filter(x=>x.id!==id); saveData(); renderAll(); toast("🗑 Deleted");}
+function showHist(id){
+  const i=getItem(id); $("histTitle").textContent="🕘 "+i.name;
+  const cur=`<div><b>Current</b> Min ${money(i.minPrice)} · Max ${money(i.maxPrice)}</div>`;
+  const rows=(i.history||[]).map(h=>`<div style="border-top:1px solid var(--line);margin-top:6px;padding-top:6px">${new Date(h.date).toLocaleString()}<br><span class="muted">Min ${money(h.previous.minPrice)} → ${money(h.current.minPrice)} · Max ${money(h.previous.maxPrice)} → ${money(h.current.maxPrice)}</span></div>`).join("");
+  $("histBody").innerHTML=cur+(rows||`<div class="empty">No history</div>`); $("histDlg").showModal();
+}
+
+/* ======= CRAFTING ======= */
+function getRecipeCosts(recipe){
+  let min=0,max=0,avgC=0,missing=[];
+  recipe.components.forEach(c=>{
+    const item=getItem(c.itemId);
+    if(!item){missing.push(c.itemId); return;}
+    min+=n(item.minPrice)*n(c.quantity);
+    max+=n(item.maxPrice)*n(c.quantity);
+    avgC+=avg(item)*n(c.quantity);
+  });
+  return {min,max,avg:avgC,missing, qty: n(recipe.outputQuantity)||1};
+}
+
+function selRecipeCat(id){S.recipeSel=id; saveData(); renderRecipes();}
+
+function renderRecipeCatBar(){
+  const bar=$("recipeCatBar");
+  if(!bar) return;
+  const un=S.recipes.filter(r=>!r.categoryId).length;
+  let h=`<div class="rcat-pill ${S.recipeSel==="all"?"active":""}" onclick="selRecipeCat('all')"><span>🗂</span><span>All</span><span class="badge">${S.recipes.length}</span></div>`;
+  if(un) h+=`<div class="rcat-pill ${S.recipeSel===""?"active":""}" onclick="selRecipeCat('')"><span>📦</span><span>Uncategorized</span><span class="badge">${un}</span></div>`;
+  S.categories.forEach(c=>{
+    const cnt=S.recipes.filter(r=>r.categoryId===c.id).length;
+    if(!cnt) return;
+    h+=`<div class="rcat-pill ${S.recipeSel===c.id?"active":""}" onclick="selRecipeCat('${c.id}')"><span>📂</span><span>${esc(c.name)}</span><span class="badge">${cnt}</span></div>`;
+  });
+  bar.innerHTML=h;
+}
+
+function renderRecipes(){
+  renderRecipeCatBar();
+  if(!S.recipes.length){
+    $("recipeList").innerHTML=`<div class="empty" style="grid-column:1/-1">No recipes yet.<br>Example: Create recipe <b>Armour</b> with 2× Iron Ingot + 2× Leather.<br>Add those base items first, then click <b>＋ Add Recipe</b>.</div>`;
+    return;
+  }
+  const list=S.recipes.filter(r=>S.recipeSel==="all"||r.categoryId===S.recipeSel);
+  if(!list.length){
+    $("recipeList").innerHTML=`<div class="empty" style="grid-column:1/-1">No recipes in this category.</div>`;
+    return;
+  }
+  $("recipeList").innerHTML=list.map(r=>{
+    const outItem = r.outputItemId ? getItem(r.outputItemId) : null;
+    const outName = outItem ? outItem.name : (r.outputName||r.name);
+    const outQty = n(r.outputQuantity)||1;
+    const outMin = outItem ? n(outItem.minPrice) : n(r.customMinPrice);
+    const outMax = outItem ? n(outItem.maxPrice) : n(r.customMaxPrice);
+    const outAvg = (outMin+outMax)/2;
+    const costs = getRecipeCosts(r);
+    const sellMinTotal = outMin*outQty, sellMaxTotal = outMax*outQty, sellAvgTotal = outAvg*outQty;
+    const profitMin = sellMinTotal - costs.min;
+    const profitMax = sellMaxTotal - costs.min; // optimistic: cheapest build vs highest sell
+    const profitAvg = sellAvgTotal - costs.avg;
+    const canCraft = r.components.every(c=>{const it=getItem(c.itemId); return it && n(it.amount)>=n(c.quantity);});
+    const compHtml = r.components.map(c=>{
+      const it=getItem(c.itemId); if(!it) return `<div class="cl"><span>Missing item</span></div>`;
+      const lineMin = n(it.minPrice)*n(c.quantity), lineMax=n(it.maxPrice)*n(c.quantity);
+      return `<div class="cl"><span>${n(c.quantity)}× ${esc(it.name)} @ ${money(it.minPrice)} → ${money(lineMin)}</span><span class="muted">${money(lineMin)}–${money(lineMax)}</span></div>`;
+    }).join("") || `<div class="muted">No parts</div>`;
+
+    return `<div class="rcard">
+      <div class="between"><h3>🛠️ ${esc(r.name||outName)}</h3><span class="badge">${outQty}×</span></div>
+      <div class="between" style="margin:-2px 0 4px"><span class="catpill">${esc(catName(r.categoryId))}</span></div>
+      <div class="muted">Output: <b>${esc(outName)}</b> ${outItem?`· Sell ${money(outMin)}–${money(outMax)}`:`· Sell ${money(outMin)}–${money(outMax)} (custom)`}</div>
+      <div class="comp-list">${compHtml}</div>
+      <div class="cost-box">
+        💵 Build Cost (material @Min): <b>${money(costs.min)}</b> · @Avg: <b>${money(costs.avg)}</b> · @Max: <b>${money(costs.max)}</b><br>
+        💰 Sell Value (${outQty}×): <b>${money(sellMinTotal)}</b> min / <b>${money(sellAvgTotal)}</b> avg / <b>${money(sellMaxTotal)}</b> max<br>
+        🤑 Profit (Avg): <b class="${profitAvg>=0?"good":"bad"}">${money(profitAvg)}</b> &nbsp; 
+        Optimistic (Max sell - Min cost): <b class="${profitMax>=0?"good":"bad"}">${money(profitMax)}</b><br>
+        Per Unit Cost: <b>${money(costs.avg/outQty)}</b> · Per Unit Profit Avg: <b class="${profitAvg/outQty>=0?"good":"bad"}">${money(profitAvg/outQty)}</b>
+      </div>
+      <div class="between" style="margin-top:10px">
+        <span class="muted">${canCraft?"✅ Can craft now": "❌ Not enough materials"}</span>
+        <div class="acts">
+          <button class="primary" ${canCraft?"": "disabled"} onclick="craftRecipe('${r.id}')">⚒️ Craft</button>
+          <button class="ghost" onclick="openRecipe('${r.id}')">✎</button>
+          <button class="ghost" onclick="delRecipe('${r.id}')">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function openRecipe(id){
+  const r=id? S.recipes.find(x=>x.id===id):null;
+  $("rTitle").textContent=r?"Edit Recipe":"Add Recipe";
+  $("rId").value=r?.id||"";
+  $("rName").value=r?.name||"";
+  $("rOutQty").value=r?.outputQuantity||1;
+  $("rOutName").value=r?.outputName||r?.name||"";
+  $("rCustomMin").value=r?.customMinPrice||0;
+  $("rCustomMax").value=r?.customMaxPrice||0;
+  $("rNotes").value=r?.notes||"";
+  const defaultCat = r ? r.categoryId : (S.recipeSel && S.recipeSel!=="all" ? S.recipeSel : "");
+  $("rCat").innerHTML=`<option value="">Uncategorized</option>`+S.categories.map(c=>`<option value="${c.id}" ${c.id===defaultCat?"selected":""}>${esc(c.name)}</option>`).join("");
+  // populate output item select
+  const opts = `<option value="">— Custom / New Item —</option>` + S.items.map(it=>`<option value="${it.id}" ${(r?.outputItemId===it.id)?"selected":""}>${esc(it.name)} (${money(it.minPrice)}→${money(it.maxPrice)})</option>`).join("");
+  $("rOutItem").innerHTML=opts;
+  tempComps = r?.components ? JSON.parse(JSON.stringify(r.components)) : [];
+  if(!tempComps.length && S.items.length){
+    // starter example if creating new: empty, user adds
+  }
+  renderCompRows();
+  onOutputChange();
+  updateRPreview();
+  $("recipeDlg").showModal();
+}
+
+function onOutputChange(){
+  const isCustom = !$("rOutItem").value;
+  $("customOutBox").style.display = isCustom? "block":"none";
+  if(!isCustom){
+    const it=getItem($("rOutItem").value);
+    if(it){
+      $("rOutName").value=it.name;
+      // sync name field if empty
+      if(!$("rName").value) $("rName").value=it.name;
+    }
+  }
+  updateRPreview();
+}
+
+function renderCompRows(){
+  const container=$("compContainer");
+  if(!tempComps.length){
+    container.innerHTML=`<div class="empty">No parts yet. Example: Armour needs 2 Ingots + 2 Leather.</div>`;
+    return;
+  }
+  const itemOptions = S.items.map(it=>`<option value="${it.id}">${esc(it.name)} – ${money(it.minPrice)}/${money(it.maxPrice)} (have ${it.amount})</option>`).join("");
+  container.innerHTML=tempComps.map((c,i)=>`
+    <div class="comp-row">
+      <select onchange="updComp(${i},'itemId',this.value)">${itemOptions.replace(`value="${c.itemId}"`,`value="${c.itemId}" selected`)}</select>
+      <input type="number" min="1" step="1" value="${c.quantity}" oninput="updComp(${i},'quantity',this.value)">
+      <button type="button" class="tiny" onclick="removeComp(${i})">✕</button>
+    </div>
+  `).join("");
+}
+
+function addComp(){
+  if(!S.items.length){toast("Add base items first (e.g. Ingot, Leather)","err"); return;}
+  tempComps.push({itemId:S.items[0].id, quantity:1});
+  renderCompRows(); updateRPreview();
+}
+function updComp(i,field,val){
+  if(field==='quantity') tempComps[i].quantity=n(val)||1;
+  else tempComps[i].itemId=val;
+  updateRPreview();
+}
+function removeComp(i){tempComps.splice(i,1); renderCompRows(); updateRPreview();}
+
+function updateRPreview(){
+  const qty = n($("rOutQty").value)||1;
+  const outItemId = $("rOutItem").value;
+  const outItem = outItemId ? getItem(outItemId) : null;
+  const outName = $("rOutName").value || $("rName").value || "Output";
+  const customMin = n($("rCustomMin").value), customMax=n($("rCustomMax").value);
+  const outMin = outItem? n(outItem.minPrice):customMin;
+  const outMax = outItem? n(outItem.maxPrice):customMax;
+  const outAvg = (outMin+outMax)/2;
+
+  let min=0,max=0,avgC=0;
+  let lines=[];
+  tempComps.forEach(c=>{
+    const it=getItem(c.itemId);
+    if(!it) return;
+    const q=n(c.quantity);
+    min+=n(it.minPrice)*q;
+    max+=n(it.maxPrice)*q;
+    avgC+=avg(it)*q;
+    lines.push(`${q}× ${it.name} @ ${money(it.minPrice)} = ${money(n(it.minPrice)*q)}`);
+  });
+
+  const sellMin=outMin*qty, sellMax=outMax*qty, sellAvg=outAvg*qty;
+  const pAvg=sellAvg-avgC, pMax=sellMax-min;
+
+  $("rPreview").innerHTML=`
+    <b>Recipe:</b> ${esc($("rName").value||outName)} = ${lines.length?lines.join(" + "):"<i>no parts</i>"} → ${qty}× ${esc(outName)}<br>
+    Build Cost: <b>${money(min)}</b> (min) / <b>${money(avgC)}</b> (avg) / <b>${money(max)}</b> (max)<br>
+    Sell Value: <b>${money(sellMin)}</b> – <b>${money(sellMax)}</b> (avg ${money(sellAvg)})<br>
+    Profit est: Avg <b class="${pAvg>=0?"good":"bad"}">${money(pAvg)}</b> | Max-min <b class="${pMax>=0?"good":"bad"}">${money(pMax)}</b><br>
+    Per unit build: <b>${money(qty?avgC/qty:0)}</b>
+  `;
+}
+
+function saveRecipe(e){
+  e.preventDefault();
+  const id=$("rId").value;
+  const recipe={
+    id:id||uid(),
+    name:$("rName").value.trim() || $("rOutName").value.trim() || "Unnamed Recipe",
+    categoryId:$("rCat").value,
+    outputItemId:$("rOutItem").value,
+    outputName:$("rOutName").value.trim() || $("rName").value.trim(),
+    outputQuantity:Math.max(1,n($("rOutQty").value)||1),
+    customMinPrice:n($("rCustomMin").value),
+    customMaxPrice:n($("rCustomMax").value),
+    components: tempComps.map(c=>({itemId:c.itemId, quantity:Math.max(1,n(c.quantity)||1)})).filter(c=>c.itemId),
+    notes:$("rNotes").value.trim()
+  };
+  if(!recipe.components.length){toast("Add at least 1 component","err"); return;}
+  if(!recipe.name){toast("Enter recipe name","err"); return;}
+  if(!recipe.outputItemId && !recipe.outputName){toast("Enter output name","err"); return;}
+
+  if(id) S.recipes=S.recipes.map(r=>r.id===id?recipe:r);
+  else S.recipes.push(recipe);
+  saveData(); $("recipeDlg").close(); renderRecipes(); renderStats();
+  toast(id?"✏️ Recipe updated":"✅ Recipe added","ok");
+}
+function delRecipe(id){ if(!confirm("Delete this recipe?"))return; S.recipes=S.recipes.filter(r=>r.id!==id); saveData(); renderRecipes(); toast("🗑 Recipe deleted");}
+function craftRecipe(id){
+  const r=S.recipes.find(x=>x.id===id); if(!r) return;
+  // check
+  for(const c of r.components){
+    const it=getItem(c.itemId); if(!it || n(it.amount)<n(c.quantity)){ toast(`Need ${c.quantity}× ${it?it.name:"item"} – have ${it?it.amount:0}`,"err"); return;}
+  }
+  // deduct
+  r.components.forEach(c=>{ const it=getItem(c.itemId); it.amount-=n(c.quantity); });
+  // add output
+  const outQty=n(r.outputQuantity)||1;
+  if(r.outputItemId){
+    const out=getItem(r.outputItemId); out.amount+=outQty;
+  } else {
+    let existing=S.items.find(it=>it.name.toLowerCase()===(r.outputName||r.name).toLowerCase());
+    if(existing){ existing.amount+=outQty; }
+    else {
+      S.items.push({id:uid(), name:r.outputName||r.name, categoryId:"", amount:outQty, minPrice:n(r.customMinPrice), maxPrice:n(r.customMaxPrice), notes:`Crafted via ${r.name}`, history:[], createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()});
+    }
+  }
+  saveData(); renderAll(); toast(`⚒️ Crafted ${outQty}× ${esc(r.outputName||r.name)}`,"ok");
+}
+
+/* CALC */
+function openCalc(){runCalc();$("calcDlg").showModal();}
+function runCalc(){
+  const b=n($("cBuy").value), s=n($("cSell").value), q=n($("cQty").value);
+  const p=s-b,mg=s>0?p/s*100:0,roi=b>0?p/b*100:0;
+  $("calcOut").innerHTML=`Profit/Item <b class="${p>=0?"good":"bad"}">${money(p)}</b> · Total <b class="${p>=0?"good":"bad"}">${money(p*q)}</b><br>Margin ${mg.toFixed(2)}% · ROI ${roi.toFixed(2)}% · Cost ${money(b*q)} → Revenue ${money(s*q)}`;
+}
+
+/* IMPORT EXPORT */
+function exportData(){
+  const blob=new Blob([backupPayload()],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`inventory-crafting-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href);toast("⬇ Exported","ok");
+}
+function importData(e){
+  const f=e.target.files[0]; if(!f)return;
+  const rdr=new FileReader();
+  rdr.onload=()=>{try{
+    const d=JSON.parse(rdr.result);
+    if(!Array.isArray(d.items)||!Array.isArray(d.categories)) throw 0;
+    if(!confirm(`Import ${d.items.length} items, ${(d.categories||[]).length} cats, ${(d.recipes||[]).length} recipes? Replaces current.`))return;
+    S.categories=(d.categories||[]).map(c=>({id:c.id||uid(),name:String(c.name||"Unnamed")}));
+    S.items=(d.items||[]).map(i=>({id:i.id||uid(),name:String(i.name||"Unnamed"),categoryId:i.categoryId||"",amount:n(i.amount),minPrice:n(i.minPrice||i.buyPrice||0),maxPrice:n(i.maxPrice||i.sellPrice||0),stockpile:n(i.stockpile),notes:String(i.notes||""),history:Array.isArray(i.history)?i.history:[],createdAt:i.createdAt||new Date().toISOString(),updatedAt:i.updatedAt||new Date().toISOString()}));
+    S.recipes=(d.recipes||[]).map(rc=>({id:rc.id||uid(),name:rc.name||rc.outputName||"Recipe",categoryId:rc.categoryId||"",outputItemId:rc.outputItemId||"",outputName:rc.outputName||"",outputQuantity:n(rc.outputQuantity)||1,customMinPrice:n(rc.customMinPrice),customMaxPrice:n(rc.customMaxPrice),components:(rc.components||[]).map(c=>({itemId:c.itemId,quantity:n(c.quantity)||1})),notes:rc.notes||""}));
+    if(d.currency)S.currency=d.currency,$("currency").value=d.currency;
+    S.sel="all"; S.recipeSel="all"; saveData(); renderAll(); toast("✅ Imported","ok");
+  }catch(err){toast("❌ Invalid backup","err");} e.target.value="";};
+  rdr.readAsText(f);
+}
+
+/* SHORTCUTS */
+document.addEventListener("keydown",e=>{
+  if(e.target.matches("input,textarea,select"))return;
+  if(e.key==="/"){e.preventDefault();$("search").focus();}
+  if(e.key.toLowerCase()==="n"){e.preventDefault();openItem();}
+});
+document.querySelectorAll("th.s").forEach(th=>th.onclick=()=>{
+  if($("sortBy").value===th.dataset.k) toggleDir();
+  else {$("sortBy").value=th.dataset.k; renderItems();}
+});
+function renderAll(){renderCats();renderStats();renderItems();renderCatSum();renderRecipes();}
+setInterval(()=>saveData(),20000);
+loadData();
+</script>
+</body>
+</html>
